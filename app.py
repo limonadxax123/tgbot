@@ -3,15 +3,22 @@ import telebot
 from flask import Flask, request
 from openai import OpenAI
 
-# Токены (лучше хранить в Environment Variables на Render)
-TG_TOKEN = os.getenv("8560116253:AAEfLxYZAL2AK-e--atv9z0lq2Vpv1QUpqw")
-OPENAI_TOKEN = os.getenv("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")
+# Берём токены из Environment Variables
+TG_TOKEN = os.getenv("TG_TOKEN")
+OPENAI_TOKEN = os.getenv("OPENAI_TOKEN")
+
+if not TG_TOKEN or not OPENAI_TOKEN:
+    raise ValueError("❌ TG_TOKEN или OPENAI_TOKEN не установлены в Environment Variables")
 
 bot = telebot.TeleBot(TG_TOKEN)
-user_histories = {}
 client = OpenAI(api_key=OPENAI_TOKEN)
 
 app = Flask(__name__)
+
+# Хранилище истории пользователей
+user_histories = {}
+MAX_HISTORY = 20
+
 
 @app.route(f"/{TG_TOKEN}", methods=["POST"])
 def webhook():
@@ -20,17 +27,22 @@ def webhook():
     bot.process_new_updates([update])
     return "OK", 200
 
+
 @app.route("/")
 def index():
     return "Bot is running"
 
-MAX_HISTORY = 20  # можно написать вверху файла
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     user_id = message.chat.id
     user_text = message.text
 
+    # Игнорируем не текстовые сообщения
+    if not user_text:
+        return
+
+    # Если пользователя ещё нет в истории
     if user_id not in user_histories:
         user_histories[user_id] = [
             {"role": "system", "content": "Ты дружелюбный ИИ как character.ai"}
@@ -41,37 +53,32 @@ def handle_message(message):
         {"role": "user", "content": user_text}
     )
 
-    # 🔥 ВОТ СЮДА вставлять ограничение памяти
+    # Ограничиваем память
     if len(user_histories[user_id]) > MAX_HISTORY:
         user_histories[user_id] = user_histories[user_id][-MAX_HISTORY:]
 
-    # Теперь отправляем в OpenAI
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=user_histories[user_id]
-    )
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=user_histories[user_id]
+        )
 
-    answer = response.choices[0].message.content
+        answer = response.choices[0].message.content
 
-    # Сохраняем ответ бота
-    user_histories[user_id].append(
-        {"role": "assistant", "content": answer}
-    )
+        # Сохраняем ответ бота
+        user_histories[user_id].append(
+            {"role": "assistant", "content": answer}
+        )
 
-    bot.reply_to(message, answer)
+        bot.reply_to(message, answer)
 
+    except Exception as e:
+        print("OpenAI error:", e)
+        bot.reply_to(message, "Произошла ошибка 😔 Попробуй позже.")
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "Ты дружелюбный ИИ как character.ai"},
-            {"role": "user", "content": user_text}
-        ]
-    )
-
-    bot.reply_to(message, response.choices[0].message.content)
 
 if __name__ == "__main__":
     bot.remove_webhook()
     bot.set_webhook(url=f"https://ТВОЙ-RENDER-URL.onrender.com/{TG_TOKEN}")
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
