@@ -53,9 +53,10 @@ def handle_message(message):
         answer = response.choices[0].message.content
         bot.reply_to(message, answer)
 
-    except Exception as e:
-        print("OpenAI error:", e)
-        bot.reply_to(message, "Ошибка 😔 Попробуй позже.")
+except Exception as e:
+    print("OpenAI error:", e)
+    bot.reply_to(message, str(e))
+
 
 # ====== ЗАПУСК ======
 if __name__ == "__main__":
