@@ -26,18 +26,20 @@ user_histories = {}
 MAX_HISTORY = 20
 
 # ==============================
-# Webhook
+# Telegram Webhook (ОБЯЗАТЕЛЬНО)
 # ==============================
 
-@app.route("/set_webhook")
-def set_webhook():
-    bot.remove_webhook()
-    bot.set_webhook(
-        url=f"https://tgbot-2-rnmy.onrender.com/{TG_TOKEN}"
-    )
-    return "Webhook set!", 200
+@app.route(f"/{TG_TOKEN}", methods=["POST"])
+def telegram_webhook():
+    json_str = request.get_data().decode("UTF-8")
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return "OK", 200
 
 
+# ==============================
+# Index
+# ==============================
 
 @app.route("/")
 def index():
@@ -45,7 +47,7 @@ def index():
 
 
 # ==============================
-# Set webhook manually (один раз после деплоя)
+# Установка webhook вручную
 # ==============================
 
 @app.route("/set_webhook")
@@ -101,9 +103,8 @@ def handle_message(message):
 
 
 # ==============================
-# Run app
+# Run
 # ==============================
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
-
