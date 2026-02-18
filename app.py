@@ -11,7 +11,7 @@ TG_TOKEN = os.getenv("TG_TOKEN")
 OPENAI_TOKEN = os.getenv("OPENAI_TOKEN")
 
 if not TG_TOKEN or not OPENAI_TOKEN:
-    raise ValueError("❌ TG_TOKEN или OPENAI_TOKEN не установлены в Environment Variables")
+    raise ValueError("TG_TOKEN или OPENAI_TOKEN не установлены")
 
 bot = telebot.TeleBot(TG_TOKEN)
 client = OpenAI(api_key=OPENAI_TOKEN)
@@ -26,7 +26,7 @@ user_histories = {}
 MAX_HISTORY = 20
 
 # ==============================
-# Telegram Webhook (ОБЯЗАТЕЛЬНО)
+# TELEGRAM WEBHOOK (ОБЯЗАТЕЛЬНО)
 # ==============================
 
 @app.route(f"/{TG_TOKEN}", methods=["POST"])
@@ -38,16 +38,16 @@ def telegram_webhook():
 
 
 # ==============================
-# Index
+# INDEX
 # ==============================
 
 @app.route("/")
 def index():
-    return "Bot is running"
+    return "BOT WORKING V1"
 
 
 # ==============================
-# Установка webhook вручную
+# УСТАНОВКА WEBHOOK
 # ==============================
 
 @app.route("/set_webhook")
@@ -56,20 +56,20 @@ def set_webhook():
     bot.set_webhook(
         url=f"https://tgbot-2-rnmy.onrender.com/{TG_TOKEN}"
     )
-    return "Webhook set!", 200
+    return "Webhook successfully set!", 200
 
 
 # ==============================
-# Message Handler
+# MESSAGE HANDLER
 # ==============================
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
-    user_id = message.chat.id
-    user_text = message.text
 
-    if not user_text:
+    if not message.text:
         return
+
+    user_id = message.chat.id
 
     if user_id not in user_histories:
         user_histories[user_id] = [
@@ -77,11 +77,10 @@ def handle_message(message):
         ]
 
     user_histories[user_id].append(
-        {"role": "user", "content": user_text}
+        {"role": "user", "content": message.text}
     )
 
-    if len(user_histories[user_id]) > MAX_HISTORY:
-        user_histories[user_id] = user_histories[user_id][-MAX_HISTORY:]
+    user_histories[user_id] = user_histories[user_id][-MAX_HISTORY:]
 
     try:
         response = client.chat.completions.create(
@@ -99,12 +98,13 @@ def handle_message(message):
 
     except Exception as e:
         print("OpenAI error:", e)
-        bot.reply_to(message, "Произошла ошибка 😔 Попробуй позже.")
+        bot.reply_to(message, "Ошибка 😔 Попробуй позже.")
 
 
 # ==============================
-# Run
+# RUN
 # ==============================
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
