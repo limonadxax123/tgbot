@@ -7,6 +7,12 @@ from openai import OpenAI
 TG_TOKEN = os.getenv("TG_TOKEN")
 OPENAI_TOKEN = os.getenv("OPENAI_TOKEN")
 
+# Проверка токенов
+if not TG_TOKEN:
+    raise ValueError("TG_TOKEN not set")
+if not OPENAI_TOKEN:
+    raise ValueError("OPENAI_TOKEN not set")
+
 # ====== ИНИЦИАЛИЗАЦИЯ ======
 bot = telebot.TeleBot(TG_TOKEN)
 client = OpenAI(api_key=OPENAI_TOKEN)
@@ -18,7 +24,7 @@ app = Flask(__name__)
 def index():
     return "Bot is running"
 
-# ====== WEBHOOK ОТ TELEGRAM ======
+# ====== WEBHOOK ======
 @app.route(f"/{TG_TOKEN}", methods=["POST"])
 def webhook():
     json_str = request.get_data().decode("UTF-8")
@@ -34,12 +40,12 @@ def set_webhook():
     bot.set_webhook(url=url)
     return f"Webhook set to {url}"
 
-# ====== ОБРАБОТКА /start ======
+# ====== /start ======
 @bot.message_handler(commands=["start"])
 def start_message(message):
     bot.reply_to(message, "Привет 👋 Напиши что-нибудь!")
 
-# ====== ОБРАБОТКА ВСЕХ СООБЩЕНИЙ ======
+# ====== ВСЕ СООБЩЕНИЯ ======
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     try:
@@ -53,10 +59,9 @@ def handle_message(message):
         answer = response.choices[0].message.content
         bot.reply_to(message, answer)
 
-except Exception as e:
-    print("OpenAI error:", e)
-    bot.reply_to(message, str(e))
-
+    except Exception as e:
+        print("OpenAI error:", e)
+        bot.reply_to(message, str(e))  # временно показываем ошибку
 
 # ====== ЗАПУСК ======
 if __name__ == "__main__":
