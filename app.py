@@ -5,17 +5,20 @@ from openai import OpenAI
 
 # ====== ТОКЕНЫ ИЗ ENVIRONMENT ======
 TG_TOKEN = os.getenv("TG_TOKEN")
-OPENAI_TOKEN = os.getenv("OPENAI_TOKEN")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-# Проверка токенов
 if not TG_TOKEN:
     raise ValueError("TG_TOKEN not set")
-if not OPENAI_TOKEN:
-    raise ValueError("OPENAI_TOKEN not set")
+if not OPENROUTER_API_KEY:
+    raise ValueError("OPENROUTER_API_KEY not set")
 
 # ====== ИНИЦИАЛИЗАЦИЯ ======
 bot = telebot.TeleBot(TG_TOKEN)
-client = OpenAI(api_key=OPENAI_TOKEN)
+
+client = OpenAI(
+    api_key=OPENROUTER_API_KEY,
+    base_url="https://openrouter.ai/api/v1"
+)
 
 app = Flask(__name__)
 
@@ -43,14 +46,14 @@ def set_webhook():
 # ====== /start ======
 @bot.message_handler(commands=["start"])
 def start_message(message):
-    bot.reply_to(message, "Привет 👋 Напиши что-нибудь!")
+    bot.reply_to(message, "Привет 👋 Я бот на OpenRouter!")
 
 # ====== ВСЕ СООБЩЕНИЯ ======
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="meta-llama/llama-3.1-8b-instruct:free",
             messages=[
                 {"role": "user", "content": message.text}
             ]
@@ -60,8 +63,8 @@ def handle_message(message):
         bot.reply_to(message, answer)
 
     except Exception as e:
-        print("OpenAI error:", e)
-        bot.reply_to(message, str(e))  # временно показываем ошибку
+        print("OpenRouter error:", e)
+        bot.reply_to(message, "Ошибка API 😢")
 
 # ====== ЗАПУСК ======
 if __name__ == "__main__":
